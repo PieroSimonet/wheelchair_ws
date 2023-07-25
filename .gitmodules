@@ -1,0 +1,30 @@
+[submodule "src/ros_rnet_controller"]
+	path = src/ros_rnet_controller
+	url = git@github.com:braingear-wheelchair/ros_rnet_controller.git
+[submodule "src/wheelchair_iaslab_odometry"]
+	path = src/wheelchair_iaslab_odometry
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_odometry.git
+[submodule "src/wheelchair_iaslab_navigation"]
+	path = src/wheelchair_iaslab_navigation
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_navigation.git
+[submodule "src/wheelchair_iaslab_sensors"]
+	path = src/wheelchair_iaslab_sensors
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_sensors.git
+[submodule "src/wheelchair_iaslab_planer"]
+	path = src/wheelchair_iaslab_planer
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_planer.git
+[submodule "src/wheelchair_iaslab_init"]
+	path = src/wheelchair_iaslab_init
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_init.git
+[submodule "src/wheelchair_iaslab_gazebo"]
+	path = src/wheelchair_iaslab_gazebo
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_gazebo.git
+[submodule "src/wheelchair_iaslab_description"]
+	path = src/wheelchair_iaslab_description
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_description.git
+[submodule "src/wheelchair_iaslab_control"]
+	path = src/wheelchair_iaslab_control
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_control.git
+[submodule "src/ros_rnet_node"]
+	path = src/ros_rnet_node
+	url = git@github.com:braingear-wheelchair/ros_rnet_node.git
