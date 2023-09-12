@@ -28,3 +28,6 @@
 [submodule "src/ros_rnet_node"]
 	path = src/ros_rnet_node
 	url = git@github.com:braingear-wheelchair/ros_rnet_node.git
+[submodule "src/prox"]
+	path = src/prox
+	url = git@github.com:PieroSimonet/prox.git
