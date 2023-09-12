@@ -31,3 +31,9 @@
 [submodule "src/prox"]
 	path = src/prox
 	url = git@github.com:PieroSimonet/prox.git
+[submodule "src/shared_navigation"]
+	path = src/shared_navigation
+	url = git@github.com:braingear-wheelchair/shared_navigation.git
+[submodule "src/proximity_grid"]
+	path = src/proximity_grid
+	url = git@github.com:braingear-wheelchair/proximity_grid.git
