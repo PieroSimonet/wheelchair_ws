@@ -37,3 +37,6 @@
 [submodule "src/proximity_grid"]
 	path = src/proximity_grid
 	url = git@github.com:braingear-wheelchair/proximity_grid.git
+[submodule "src/trav_analysis_2"]
+	path = src/trav_analysis_2
+	url = git@github.com:PieroSimonet/TraversabilityAnalysis.git
