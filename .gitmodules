@@ -40,3 +40,6 @@
 [submodule "src/trav_analysis_2"]
 	path = src/trav_analysis_2
 	url = git@github.com:PieroSimonet/TraversabilityAnalysis.git
+[submodule "src/plane_fitter"]
+	path = src/plane_fitter
+	url = git@github.com:PieroSimonet/plane_fitter.git
