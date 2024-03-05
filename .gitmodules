@@ -25,21 +25,21 @@
 [submodule "src/wheelchair_iaslab_control"]
 	path = src/wheelchair_iaslab_control
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_control.git
-[submodule "src/ros_rnet_node"]
-	path = src/ros_rnet_node
-	url = git@github.com:braingear-wheelchair/ros_rnet_node.git
-[submodule "src/prox"]
-	path = src/prox
-	url = git@github.com:PieroSimonet/prox.git
 [submodule "src/shared_navigation"]
 	path = src/shared_navigation
 	url = git@github.com:braingear-wheelchair/shared_navigation.git
 [submodule "src/proximity_grid"]
 	path = src/proximity_grid
 	url = git@github.com:braingear-wheelchair/proximity_grid.git
-[submodule "src/trav_analysis_2"]
-	path = src/trav_analysis_2
-	url = git@github.com:PieroSimonet/TraversabilityAnalysis.git
 [submodule "src/plane_fitter"]
 	path = src/plane_fitter
 	url = git@github.com:PieroSimonet/plane_fitter.git
+[submodule "src/pointcloud_concatenate"]
+	path = src/pointcloud_concatenate
+	url = git@github.com:aseligmann/pointcloud_concatenate.git
+[submodule "src/wheelchair_iaslab_proximityplanner"]
+	path = src/wheelchair_iaslab_proximityplanner
+	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_proximityplanner.git
+[submodule "src/trav_analysis"]
+	path = src/trav_analysis
+	url = https://github.com/PieroSimonet/TraversabilityAnalysis
