@@ -25,9 +25,11 @@
 [submodule "src/shared_navigation"]
 	path = src/shared_navigation
 	url = git@github.com:braingear-wheelchair/shared_navigation.git
+	branch = master
 [submodule "src/proximity_grid"]
 	path = src/proximity_grid
 	url = git@github.com:braingear-wheelchair/proximity_grid.git
+	branch = main
 [submodule "src/plane_fitter"]
 	path = src/plane_fitter
 	url = git@github.com:PieroSimonet/plane_fitter.git
@@ -37,6 +39,9 @@
 [submodule "src/wheelchair_iaslab_proximityplanner"]
 	path = src/wheelchair_iaslab_proximityplanner
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_proximityplanner.git
+[submodule "src/wheelchair_iaslab_target_generator"]
+	path = src/wheelchair_iaslab_target_generator
+	url = git@github.com:PieroSimonet/wheelchair_iaslab_target_generator.git
 [submodule "src/trav_analysis"]
 	path = src/trav_analysis
 	url = https://github.com/PieroSimonet/TraversabilityAnalysis
