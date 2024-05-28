@@ -62,3 +62,6 @@
 	path = src/ros_rnet_node
 	url = git@github.com:braingear-wheelchair/ros_rnet_node.git
 	branch = main
+[submodule "src/half_layer"]
+	path = src/half_layer
+	url = git@github.com:PieroSimonet/half_layer.git
