@@ -64,4 +64,5 @@
 	branch = main
 [submodule "src/half_layer"]
 	path = src/half_layer
-	url = git@github.com:PieroSimonet/half_layer.git
+  url = git@github.com:PieroSimonet/half_layer.git
+  branch = main
