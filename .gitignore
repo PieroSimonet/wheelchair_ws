@@ -1,3 +1,9 @@
 .catkin_workspace
 build/*
 devel/*
+ema_pc/
+mazemap1/
+old_src/
+src/.vscode/
+text.txt
+src_b/

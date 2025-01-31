@@ -1,68 +1,68 @@
-[submodule "src/wheelchair_iaslab_odometry"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_odometry"]
 	path = src/wheelchair_iaslab_odometry
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_odometry.git
 	branch = main
-[submodule "src/wheelchair_iaslab_navigation"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_navigation"]
 	path = src/wheelchair_iaslab_navigation
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_navigation.git
 	branch = main
-[submodule "src/wheelchair_iaslab_sensors"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_sensors"]
 	path = src/wheelchair_iaslab_sensors
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_sensors.git
 	branch = main
-[submodule "src/wheelchair_iaslab_planer"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_planer"]
 	path = src/wheelchair_iaslab_planer
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_planer.git
 	branch = main
-[submodule "src/wheelchair_iaslab_init"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_init"]
 	path = src/wheelchair_iaslab_init
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_init.git
 	branch = main
-[submodule "src/wheelchair_iaslab_gazebo"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_gazebo"]
 	path = src/wheelchair_iaslab_gazebo
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_gazebo.git
 	branch = main
-[submodule "src/wheelchair_iaslab_description"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_description"]
 	path = src/wheelchair_iaslab_description
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_description.git
 	branch = main
-[submodule "src/wheelchair_iaslab_control"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_control"]
 	path = src/wheelchair_iaslab_control
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_control.git
 	branch = main
-[submodule "src/shared_navigation"]
+[submodule "src/wheelchair_iaslab_main/shared_navigation"]
 	path = src/shared_navigation
 	url = git@github.com:braingear-wheelchair/shared_navigation.git
 	branch = master
-[submodule "src/proximity_grid"]
+[submodule "src/test/proximity_grid"]
 	path = src/proximity_grid
 	url = git@github.com:braingear-wheelchair/proximity_grid.git
 	branch = main
-[submodule "src/plane_fitter"]
+[submodule "src/test/plane_fitter"]
 	path = src/plane_fitter
 	url = git@github.com:PieroSimonet/plane_fitter.git
 	branch = master
-[submodule "src/pointcloud_concatenate"]
+[submodule "src/test/pointcloud_concatenate"]
 	path = src/pointcloud_concatenate
 	url = git@github.com:aseligmann/pointcloud_concatenate.git
 	branch = main
-[submodule "src/wheelchair_iaslab_proximityplanner"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_proximityplanner"]
 	path = src/wheelchair_iaslab_proximityplanner
 	url = git@github.com:braingear-wheelchair/wheelchair_iaslab_proximityplanner.git
 	branch = develop
-[submodule "src/wheelchair_iaslab_target_generator"]
+[submodule "src/wheelchair_iaslab_main/wheelchair_iaslab_target_generator"]
 	path = src/wheelchair_iaslab_target_generator
 	url = git@github.com:PieroSimonet/wheelchair_iaslab_target_generator.git
 	branch = main
-[submodule "src/trav_analysis"]
+[submodule "src/test/trav_analysis"]
 	path = src/trav_analysis
 	url = https://github.com/PieroSimonet/TraversabilityAnalysis
 	branch = master
-[submodule "src/ros_rnet_node"]
+[submodule "src/wheelchair_iaslab_main/ros_rnet_node"]
 	path = src/ros_rnet_node
 	url = git@github.com:braingear-wheelchair/ros_rnet_node.git
 	branch = main
-[submodule "src/half_layer"]
+[submodule "src/wheelchair_iaslab_main/half_layer"]
 	path = src/half_layer
-  url = git@github.com:PieroSimonet/half_layer.git
-  branch = main
+    url = git@github.com:PieroSimonet/half_layer.git
+    branch = main
