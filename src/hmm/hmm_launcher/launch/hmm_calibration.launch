@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="subject" default="s1"/>
+  <arg name="devarg" default='/var/home/piero/data.gdf'/> <!-- put gtec/eegos here -->
+
+  <include file="$(find rosneuro_launchers)/launch/calibration.launch">
+    <arg name="subject" value="$(arg subject)" />
+    <arg name="devarg" value="$(arg devarg)" />
+  </include>
+
+</launch>

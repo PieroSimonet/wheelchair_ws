@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="subject" default="s1"/>
+  <arg name="decoder_path"  default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/smr/classifier16channels.dat' />
+  <arg name="devarg" default='/var/home/piero/data.gdf'/> <!-- put gtec/eegos here -->
+
+  <!-- Classical BCI raw aquisition, recorder and sbcni -->
+  <include file="$(find rosneuro_launchers)/launch/evaluation.launch">
+    <arg name="subject" value="$(arg subject)" />
+    <arg name="decoder_path" value="$(arg decoder_path)" />
+    <arg name="devarg" value="$(arg devarg)" />
+  </include>
+
+</launch>

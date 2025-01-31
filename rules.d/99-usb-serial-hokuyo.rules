@@ -1,0 +1,1 @@
+SUBSYSTEM=="tty", ATTRS{idVendor}=="8086", ATTRS{idProduct}=="0b64", SYMLINK+="hokuyo-left", GROUP="dialout"

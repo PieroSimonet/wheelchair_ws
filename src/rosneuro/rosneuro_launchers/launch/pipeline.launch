@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<launch>
+	
+	<!-- protocol arguments -->
+		<arg name="subject"  default="f1"/>
+		<arg name="task"      	 default="mi_rhlh"/>
+		<arg name="modality" 	 default='evaluation_game'/>
+		<arg name="classes"      default='[773, 771]'/>
+		<arg name="extra"     	 default=""/>
+
+	<!-- acquisition arguments -->
+		<arg name="plugin" default='rosneuro::EGDDevice'/>
+		<arg name="devarg" default='eego'/>
+		<arg name="framerate"  default='16'/>
+		<arg name="samplerate" default='512'/>
+
+	<!-- recorder -->
+		<arg name="autostart" default='true'/>
+		<arg name="filepath"  default='$(env HOME)/Projects/rosneuro_data/' />
+			
+	<!-- processing arguments -->
+		<arg name="lap_path"      default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/laplacian/laplacian16.dat'/>
+		<arg name="decoder_path"  default='$(env HOME)/cybathlon/rosneuro_data/classifiers/f1_rhlh_20231003.smr.dat'/>
+		<arg name="n_channels"    default='16'/>
+
+	<!-- control framework arguments -->
+		<arg name="integratorplugin"   default="rosneuro::integrator::Exponential"/>
+		<arg name="alpha" 	    	   default='0.985'/>
+		<arg name="rejection" 		   default='0.6465'/>
+
+	<!-- feedback arguments -->
+		<arg name="show_on_rest" default='True'/>
+			
+	<!-- Protocol parameters -->
+		<rosparam param="/protocol/subject"	 subst_value="True">$(arg subject)</rosparam>
+		<rosparam param="/protocol/modality" subst_value="True">$(arg modality)</rosparam>
+		<rosparam param="/protocol/task"	 subst_value="True">$(arg task)</rosparam>
+		<rosparam param="/protocol/extra"	 subst_value="True">$(arg extra)</rosparam>
+
+	<!-- aquisition node -->
+	<node name="acquisition" pkg="rosneuro_acquisition" type="acquisition" output="screen" >
+		<param name="~plugin" 	  value="$(arg plugin)"/>
+		<param name="~devarg" 	  value="$(arg devarg)"/>
+		<param name="~samplerate" value="$(arg samplerate)"/>
+		<param name="~framerate"  value="$(arg framerate)"/>
+	</node>
+  
+	<!-- recorder node -->
+	<node name="recorder" pkg="rosneuro_recorder" type="recorder" >
+		<param name="~autostart" value="$(arg autostart)"/>
+		<param name="~filepath" value="$(arg filepath)"/>
+	</node>
+	
+	<!-- processing node -->
+	<node name="smrbci" pkg="rosneuro_processing" type="test_smrbci" output="screen">
+		<param name="~lap_path" value="$(arg lap_path)"/>
+		<param name="~decoder_path" value="$(arg decoder_path)"/>
+		<param name="~n_channels" value="$(arg n_channels)"/>
+	</node>
+  
+	<!-- integrator node, This should go after the raw data of the hmm
+	<node name="integrator" pkg="rosneuro_integrator" type="integrator" output="screen">
+		<rosparam param="plugin" subst_value="True">$(arg integratorplugin)</rosparam>
+		<rosparam param="alpha" subst_value="True">$(arg alpha)</rosparam>
+		<rosparam param="rejection" subst_value="True">$(arg rejection)</rosparam>
+		<remap from="/smr/neuroprediction" to="/smrbci/neuroprediction"/>
+		<remap from="/integrated" to="/integrator/neuroprediction"/>
+	</node> -->
+
+  	<!-- neurowheel node 
+	<node name="trainingwheel" pkg="rosneuro_feedback_wheel" type="trainingwheel"  output="screen">
+		<rosparam param="modality" subst_value="True">$(arg modality)</rosparam>
+		<rosparam param="thresholds" subst_value="True">$(arg thresholds)</rosparam>
+		<rosparam param="classes" subst_value="True">$(arg classes)</rosparam>
+		<rosparam param="trials" subst_value="True">$(arg trials)</rosparam>
+	</node> -->
+
+	<!-- reconfigure node -->
+	<node pkg="rqt_reconfigure" type="rqt_reconfigure" name="rqt_reconfigure" /> 
+
+</launch>

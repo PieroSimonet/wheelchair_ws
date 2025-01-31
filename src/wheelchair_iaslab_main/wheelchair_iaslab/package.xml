@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package>
+  <name>wheelchair_iaslab</name>
+  <version>0.0.1</version>
+  <description>The wheelchair_iaslab Metapackage</description>
+
+  <maintainer email="alberto.gottardi@studenti.unipd.it">Alberto Gottardi</maintainer>
+
+  <license>TODO</license>
+
+  <author email="alberto.gottardi@studenti.unipd.it">Alberto Gottardi</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <metapackage/>
+  </export>
+
+</package>

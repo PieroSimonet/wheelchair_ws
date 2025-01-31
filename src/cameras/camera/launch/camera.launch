@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<launch>
+  <!--3D Real sense stereo camera rgbd have better performance -->
+  <param name="clip_distance" value="3"/>
+
+    <include ns="camera" file="$(find realsense2_camera)/launch/rs_rgbd.launch"> 
+      <!-- 	<arg name="camera"             value="stereo_camera" /> -->
+  <!-- <arg name="filters"            value="pointcloud" /> -->
+  <arg name="enable_pointcloud"   default="true"/>
+
+      <!--	<arg name="device_type"        value="l515" />
+        <arg name="align_depth"         default="true"/> -->
+    </include> 
+
+
+   <!--  <include ns="camera" file="$(find realsense2_camera)/launch/rs_camera.launch">
+    	<arg name="camera"             value="stereo_camera" />
+    	<arg name="serial_no"          value="053422251600" />
+    	<arg name="filters"            value="pointcloud" />
+    	<arg name="device_type"        value="d455" />
+        <arg name="align_depth"         default="true"/> -->
+   <!--  </include>  -->
+     
+
+</launch>

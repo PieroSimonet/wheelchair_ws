@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="camera_base_name"  default="camera_top"  />
+  <arg name="apriltag_config_yaml"  default="$(find camera)/cfg/tags.yaml"      />
+  
+  <!-- start Apriltags detector -->
+  <include file="$(find camera)/launch/apriltag_ros.launch">
+    <arg name="camera_name"        value="$(arg camera_base_name)"           />
+    <arg name="camera_frame"       value="$(arg camera_base_name)"           />
+    <arg name="apriltags_cfg_yaml" value="$(arg apriltag_config_yaml)"       />
+    <arg name="image_topic"        value="/color/image_raw" />
+
+  </include>
+</launch>
