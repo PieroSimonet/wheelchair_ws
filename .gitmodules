@@ -66,3 +66,6 @@
 	path = src/half_layer
     url = git@github.com:PieroSimonet/half_layer.git
     branch = main
+[submodule "src/errp_usa"]
+	path = src/errp_usa
+	url = git@github.com:PieroSimonet/errp_usa.git
