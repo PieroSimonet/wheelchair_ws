@@ -69,3 +69,4 @@
 [submodule "src/errp_usa"]
 	path = src/errp_usa
 	url = git@github.com:PieroSimonet/errp_usa.git
+    branch = main
