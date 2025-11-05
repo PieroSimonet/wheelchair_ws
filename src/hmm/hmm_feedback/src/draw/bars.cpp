@@ -4,6 +4,7 @@ namespace rosneuro {
   
 bars::bars(void) {
   this->sub_neuro_ = this->nh_.subscribe("/hmm/neuroprediction", 1, &bars::on_received_neuro_data, this);
+  this->sub_events_ = this->nh_.subscribe("/events/bus", 1, &bars::cb_events, this);
   this->user_quit_ = false;
   this->engine_ = new neurodraw::Engine("bars");
 	this->engine_->on_keyboard(&bars::on_keyboard_event, this);
@@ -143,6 +144,10 @@ void bars::clear_scene() {
   this->bar_r_->hide();
   this->bar_c_->hide();
 
+  this->cbar_l_->hide();
+  this->cbar_r_->hide();
+  this->cbar_c_->hide();
+
   this->treshold_l_->hide();
   this->treshold_r_->hide();
   this->treshold_c_->hide();
@@ -156,6 +161,10 @@ void bars::show_feedback() {
   this->bar_l_->show();
   this->bar_r_->show();
   this->bar_c_->show();
+
+  this->cbar_l_->show();
+  this->cbar_r_->show();
+  this->cbar_c_->show();
 
   this->treshold_l_->show();
   this->treshold_r_->show();
@@ -177,6 +186,25 @@ void bars::show_task(Task t) {
   case Task::RIGHT:
     this->circle_r_->show();
     break;
+  }
+}
+
+void bars::cb_events(const rosneuro_msgs::NeuroEvent::ConstPtr& msg) {
+  switch(msg->event) {
+    case 786:
+      this->clear_scene();
+      this->show_fixation();
+      break;
+    case 781:
+      this->clear_scene();
+      this->show_feedback();
+      break;
+    case 783:
+    case 771:
+    case 773:
+    // Reached the tresholds
+      this->clear_scene();
+      break;
   }
 }
 

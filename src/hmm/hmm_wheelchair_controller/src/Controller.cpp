@@ -31,16 +31,30 @@ controller::controller() {
     threshold_c_ = thresholds_tmp[1];
     threshold_r_ = thresholds_tmp[2];
 
-    ros::param::param<int>("~loop_rate", this->rate_freq_, 16);
-    ros::param::param<std::string>("~csv_path", this->csv_path_, "/tmp/hmm_wheelchair_controller.csv");
+    ros::param::param<int>("~loop_rate", this->rate_freq_, 50);
+    ros::param::param<std::string>("~csv_path", this->file_path_, "/tmp/");
+    ros::param::param<std::string>("~subject",  this->sub_name_, "test" );
+    ros::param::param<std::string>("~task",     this->task_, "simulation");
 
     this->goal_reached_ = false;
     this->threshold_reached_ = false;
     this->has_prob_ = false;
+    this->is_robot_moving_ = false;
+    this->is_in_fixation_gui_ = false;
 
     this->final_odom_ = nav_msgs::Odometry();
     this->final_odom_.pose.pose.position.x = 15.0;
     this->final_odom_.pose.pose.position.y = 1.3;
+
+    this->last_event_ = 0;
+
+    this->msg_ev_ = rosneuro_msgs::NeuroEvent();
+    this->msg_ev_.header.frame_id = "controller";
+
+    this->smr_raw_.softpredict.data = {0.0f, 0.0f};
+    this->smr_integrated_.softpredict.data = {0.0f, 0.0f};
+    this->hmm_raw_.softpredict.data = {0.0f, 0.0f, 0.0f};
+    this->current_prob_.softpredict.data = {0.0f, 0.0f, 0.0f};
 }
 
 controller::~controller() {}
@@ -49,6 +63,21 @@ void controller::callback_probability(const rosneuro_msgs::NeuroOutput::ConstPtr
     this->current_prob_ = *msg;
     this->has_prob_ = true;
 }
+
+
+// ------
+void controller::cb_smr_raw(const rosneuro_msgs::NeuroOutput::ConstPtr& msg) {
+    this->smr_raw_ = *msg;
+}
+
+void controller::cb_smr_integrated(const rosneuro_msgs::NeuroOutput::ConstPtr& msg) {
+    this->smr_integrated_ = *msg;
+}
+
+void controller::cb_hmm_raw(const rosneuro_msgs::NeuroOutput::ConstPtr& msg) {
+    this->hmm_raw_ = *msg;
+}
+// ------
 
 void controller::callback_laser(const sensor_msgs::LaserScan::ConstPtr& msg) {
     this->current_laser_ = *msg;
@@ -74,11 +103,19 @@ bool controller::configure() {
     this->sub_laser_       = nh_.subscribe("/fused_scan", 1, &controller::callback_laser, this);
     this->sub_odom_        = nh_.subscribe("/odometry/filtered", 1, &controller::callback_odom, this);
 
+    // Setup additional listeners
+    this->sub_smr_raw_        = nh_.subscribe("/smrbci/neuroprediction", 1, &controller::cb_smr_raw, this);
+    this->sub_smr_integrated_ = nh_.subscribe("/smr/neuroprediction/integrated", 1, &controller::cb_smr_integrated, this);
+    this->sub_hmm_raw_        = nh_.subscribe("/hmm/neuroprediction", 1, &controller::cb_hmm_raw, this);
+
     // Setup services
-    this->srv_reset_integration_ = nh_.serviceClient<std_srvs::Empty>("/integrator/reset");
+    this->srv_reset_integration_     = nh_.serviceClient<std_srvs::Empty>("/integrator/reset");
+    this->srv_reset_integration_hmm_ = nh_.serviceClient<std_srvs::Empty>("/integrator_hmm/reset");
+    this->srv_reset_hmm_             = nh_.serviceClient<std_srvs::Empty>("/hmm/reset");
 
     // Setup publishers
-    this->pub_cmd_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
+    this->pub_cmd_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel_raw", 1);
+    this->pub_evs_ = nh_.advertise<rosneuro_msgs::NeuroEvent>("/events/bus", 1);
 
     while(!this->is_gazebo_ready()) {
         ros::Duration(0.1).sleep();
@@ -91,11 +128,29 @@ bool controller::configure() {
     return true;
 }
 
+void controller::send_event(int ev) {
+
+    auto send_event_ = [this](int ev) {
+        this->msg_ev_.header.stamp = ros::Time::now();
+        this->msg_ev_.event = ev;
+        this->pub_evs_.publish(this->msg_ev_);
+    };
+
+    send_event_(ev);
+
+    // Also save this information for the csv file
+    this->last_event_ = ev;
+
+    ros::Duration(0.1).sleep();
+    send_event_(ev + EVENTS_ID.close_msk);
+
+}
+
 void controller::check_goal() {
     float dx = this->current_odom_.pose.pose.position.x - this->final_odom_.pose.pose.position.x;
     float dy = this->current_odom_.pose.pose.position.y - this->final_odom_.pose.pose.position.y;
     float dist = sqrt(dx*dx + dy*dy);
-    if (dist < 1.0) { // The goal is reached if I am less than 1 meter away
+    if (dist < 3.0) { // The goal is reached if I am less than 1 meter away
         this->goal_reached_ = true;
     }
 }
@@ -103,6 +158,7 @@ void controller::check_goal() {
 void controller::require_reset_integration() {
     std_srvs::Empty emp;
     this->srv_reset_integration_.call(emp);
+    this->srv_reset_integration_hmm_.call(emp);
 }
 
 void controller::check_probability() {
@@ -110,74 +166,317 @@ void controller::check_probability() {
 
     if (probs[0] > this->threshold_l_) {
         this->threshold_reached_ = true;
+        ROS_INFO("Left threshold reached");
         this->current_command_ = controller::command::LEFT;
+        this->send_event(EVENTS_ID.bh);
     } else if (probs[1] > this->threshold_c_) {
         this->threshold_reached_ = true;
+        ROS_INFO("Center threshold reached");
+        this->send_event(EVENTS_ID.rest);
         this->current_command_ = controller::command::CENTER;
     } else if (probs[2] > this->threshold_r_) {
         this->threshold_reached_ = true;
+        ROS_INFO("Right threshold reached");
         this->current_command_ = controller::command::RIGHT;
+        this->send_event(EVENTS_ID.bf);
     }
 }
 
+void controller::check_subgoal() {
+
+    double roll, pitch, yaw, current_yaw;
+
+    tf2::Quaternion q(
+        this->subgoal_.orientation.x,
+        this->subgoal_.orientation.y,
+        this->subgoal_.orientation.z,
+        this->subgoal_.orientation.w
+    );
+
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+    tf2::Quaternion q_c(
+        this->current_odom_.pose.pose.orientation.x,
+        this->current_odom_.pose.pose.orientation.y,
+        this->current_odom_.pose.pose.orientation.z,
+        this->current_odom_.pose.pose.orientation.w
+    );
+
+    tf2::Matrix3x3(q_c).getRPY(roll, pitch, current_yaw);
+
+    double error_d = yaw-current_yaw;
+
+    float dx = this->current_odom_.pose.pose.position.x - this->subgoal_.position.x;
+    float dy = this->current_odom_.pose.pose.position.y - this->subgoal_.position.y;
+    float dist = sqrt(dx*dx + dy*dy);
+
+    bool reached = true;
+
+    switch (this->current_command_) {
+        case controller::command::LEFT:
+        case controller::command::RIGHT:
+            if (std::abs(error_d) > 0.02) {
+                reached = false;
+            }
+            break;
+        case controller::command::CENTER:
+            if (std::abs(dist) > 1.0) {
+                reached = false;
+            }
+            break;
+    }
+
+    if (reached) {
+        // Stop the robot and proceed to the next command
+        this->send_command(geometry_msgs::Twist());
+        this->is_robot_moving_ = false;
+        this->require_reset_integration();
+        this->pid_w_.reset();
+        this->pid_x_.reset();
+
+        // Set the gui as a fixation
+        this->is_in_fixation_gui_ = true;
+        this->send_event(EVENTS_ID.fixation);
+        this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(3.0), &controller::end_fixation_callback, this, true);
+    }
+}
+
+void controller::end_fixation_callback(const ros::TimerEvent& ev) {
+    ROS_ERROR("------------");
+    this->is_in_fixation_gui_ = false;
+    this->require_reset_integration();
+    this->send_event(EVENTS_ID.continous_feedback);
+}
+
+
 geometry_msgs::Twist controller::generate_command() {
+
+    double roll, pitch, yaw, current_yaw;
+
+    tf2::Quaternion q(
+        this->subgoal_.orientation.x,
+        this->subgoal_.orientation.y,
+        this->subgoal_.orientation.z,
+        this->subgoal_.orientation.w
+    );
+
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+    tf2::Quaternion q_c(
+        this->current_odom_.pose.pose.orientation.x,
+        this->current_odom_.pose.pose.orientation.y,
+        this->current_odom_.pose.pose.orientation.z,
+        this->current_odom_.pose.pose.orientation.w
+    );
+
+    tf2::Matrix3x3(q_c).getRPY(roll, pitch, current_yaw);
+
+    double error_d = yaw-current_yaw;
+
+    float dx = this->current_odom_.pose.pose.position.x - this->subgoal_.position.x;
+    float dy = this->current_odom_.pose.pose.position.y - this->subgoal_.position.y;
+    float dist = sqrt(dx*dx + dy*dy);
+
     geometry_msgs::Twist cmd;
+
+    switch (this->current_command_) {
+        case controller::command::CENTER:
+            cmd.linear.x = this->pid_x_.compute(dist);
+        case controller::command::LEFT:
+        case controller::command::RIGHT:
+            cmd.angular.z = this->pid_w_.compute(error_d);
+            break;
+    }
+
+    return cmd;
+}
+
+
+void controller::generate_sub_goal() {
+    this->subgoal_ = this->current_odom_.pose.pose;
+
+    tf2::Quaternion q(
+      this->subgoal_.orientation.x,
+      this->subgoal_.orientation.y,
+      this->subgoal_.orientation.z,
+      this->subgoal_.orientation.w
+    );
+
+    double roll, pitch, yaw;
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+    float delta_d = 6.0f;
 
     if (this->is_command_accetable(this->current_command_)) {
         switch (this->current_command_) {
             case controller::command::LEFT:
-                cmd.linear.x = 0.0;
-                cmd.angular.z = 0.5;
+                yaw += M_PI/2.0f;
                 break;
             case controller::command::CENTER:
-                cmd.linear.x = 0.5;
-                cmd.angular.z = 0.0;
+                this->subgoal_.position.x += delta_d * std::cos(yaw);
+                this->subgoal_.position.y += delta_d * std::sin(yaw);
                 break;
             case controller::command::RIGHT:
-                cmd.linear.x = 0.0;
-                cmd.angular.z = -0.5;
+                yaw -= M_PI/2.0f;
                 break;
           
         }
+    }else {
+        this->num_reject_cmds_++;
     }
-    return cmd;
+
+    q.setRPY(roll, pitch, yaw);
+
+    this->subgoal_.orientation.x = q.x();
+    this->subgoal_.orientation.y = q.y();
+    this->subgoal_.orientation.z = q.z();
+    this->subgoal_.orientation.w = q.w();
+
 }
 
 void controller::run() {
     ros::Rate loop_rate(this->rate_freq_);
 
-    while (ros::ok() && !this->goal_reached_) {
-        if (this->has_prob_) {
+    this->init_save_file();
+    this->send_event(EVENTS_ID.init);
 
+    this->check_subgoal();
+
+    while (ros::ok() && !this->goal_reached_) {
+        if (this->is_robot_moving_) {
+          this->send_command(this->generate_command());
+          this->check_subgoal();
+        }else if (this->has_prob_ && !this->is_in_fixation_gui_) {
             this->check_probability();
 
             if (this->threshold_reached_) {
-                this->send_command(this->generate_command());
+                this->generate_sub_goal();
+                this->is_robot_moving_ = true;
                 this->threshold_reached_ = false;
                 this->require_reset_integration();
+                this->num_commands_++;
             }
-
-            this->check_goal();
+            this->send_command(geometry_msgs::Twist()); // Send "zero" cmd
         }
+        this->check_goal();
+
+        this->update_save_file();
 
         loop_rate.sleep();
         ros::spinOnce();
     }
 
+    ROS_ERROR("----------- RUN ENDED ---------------");
+
+    // Save the data
     this->close_procedure();
 
 }
 
 bool controller::is_command_accetable(controller::command cmd) {
+    if (cmd != controller::command::CENTER) 
+        return true; // I only need to check if the wheelchair could go straight 
+
     // Check the position in the scan message if the laser is too close in the requested direction
-    return true;
+    float angle_min = - M_PI/12.0f;
+    float angle_max =   M_PI/12.0f;
+
+    float min_distance = INFINITY;
+
+    float current_angle = this->current_laser_.angle_min;
+    float idx_angle = 0;
+
+    while (current_angle < angle_max) {
+
+        if (current_angle > angle_min && this->current_laser_.ranges[idx_angle] < min_distance) {
+            min_distance = this->current_laser_.ranges[idx_angle];
+        }
+
+        current_angle += this->current_laser_.angle_increment;
+        idx_angle++;
+    }
+
+    bool request = min_distance > 6.0f;
+    
+    if (!request) 
+      this->send_event(EVENTS_ID.error_rq);
+
+    return request;
 }
 
-void controller::send_command(geometry_msgs::Twist cmd) {}
+void controller::send_command(geometry_msgs::Twist cmd) {
+    this->pub_cmd_.publish(cmd);
+}
 
-void controller::save_csv() {}
+void controller::init_save_file() {
 
-void controller::close_procedure() {}
+    // Create the saving file
+    std::time_t t = std::time(0);
+
+    std::tm tm{};
+
+    #ifdef _WIN32
+        localtime_s(&tm, &t);
+    #else
+        localtime_r(&t, &tm);
+    #endif
+
+    std::ostringstream oss;
+
+    oss << this->sub_name_ << "_" << std::put_time(&tm, "%Y%m%d_%H%M") << "_" << this->task_ << ".csv";
+
+    this->file_name_ = oss.str();
+
+    this->csv_file_ = this->file_path_ + "/" + this->file_name_;
+
+    this->file_.open(this->csv_file_.c_str());
+
+    // Now save the following information:
+    // time, last_event, odom_x, odom_y, odom_w, raw_prob_0,raw_prob_1, int_prob_0, int_prob_1, hmm_raw_0, hmm_raw_1, hmm_raw_2, hmm_int_0, hmm_int_1, hmm_int_2, num_cmd, num_rej_cmd, completed
+
+    std::string file_init = "time, last_event, odom_x, odom_y, odom_w, raw_prob_0,raw_prob_1, int_prob_0, int_prob_1, hmm_raw_0, hmm_raw_1, hmm_raw_2, hmm_int_0, hmm_int_1, hmm_int_2, num_cmd, num_rej_cmd, completed";
+
+    this->file_ << file_init << std::endl;
+}
+
+void controller::update_save_file() {
+    // time, last_event, odom_x, odom_y, odom_w, raw_prob_0,raw_prob_1, int_prob_0, int_prob_1, hmm_raw_0, hmm_raw_1, hmm_raw_2, hmm_int_0, hmm_int_1, hmm_int_2, num_cmd, num_rej_cmd
+
+    tf2::Quaternion q(
+      this->current_odom_.pose.pose.orientation.x,
+      this->current_odom_.pose.pose.orientation.y,
+      this->current_odom_.pose.pose.orientation.z,
+      this->current_odom_.pose.pose.orientation.w
+    );
+
+    double roll, pitch, yaw;
+    tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+    std::string time = std::to_string(std::time(nullptr));
+
+    std::string new_information = time + "," + std::to_string(this->last_event_) +","+ std::to_string(this->current_odom_.pose.pose.position.x) + "," + std::to_string(this->current_odom_.pose.pose.position.y) + "," + std::to_string(yaw) + ",";
+
+    new_information += std::to_string(this->smr_raw_.softpredict.data[0]) + "," + std::to_string(this->smr_raw_.softpredict.data[1]) + "," + std::to_string(this->smr_integrated_.softpredict.data[0]) + "," + std::to_string(this->smr_integrated_.softpredict.data[1]) + ",";
+
+  new_information += std::to_string(this->hmm_raw_.softpredict.data[0]) + "," + std::to_string(this->hmm_raw_.softpredict.data[1]) + "," + std::to_string(this->hmm_raw_.softpredict.data[2]) + ",";
+
+    new_information += std::to_string(this->current_prob_.softpredict.data[0]) + "," + std::to_string(this->current_prob_.softpredict.data[1]) + "," + std::to_string(this->current_prob_.softpredict.data[2]) + ",";
+
+    new_information += std::to_string(this->num_commands_) + "," + std::to_string(this->num_reject_cmds_) + "," + std::to_string(this->goal_reached_);
+
+    this->file_ << new_information << std::endl;
+
+    ROS_INFO("Saved data: %s", new_information.c_str());
+}
+
+void controller::close_procedure() {
+    this->update_save_file();
+    // Check time
+    // Save the csv and close all
+    
+    if (this->file_.is_open())
+        this->file_.close();
+}
 
 }
 

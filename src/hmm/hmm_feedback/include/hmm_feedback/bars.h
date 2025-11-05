@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <rosneuro_msgs/NeuroOutput.h>
+#include <rosneuro_msgs/NeuroEvent.h>
 
 #include "neurodraw/Engine.h"
 #include "neurodraw/Palette.h"
@@ -35,6 +36,8 @@ class bars {
     void on_received_neuro_data(const rosneuro_msgs::NeuroOutput& msg);
     void on_keyboard_event(const neurodraw::KeyboardEvent& event);
 
+    void cb_events(const rosneuro_msgs::NeuroEvent::ConstPtr& msg);
+
     void clear_scene();
     void show_feedback();
     void show_fixation();
@@ -49,6 +52,7 @@ class bars {
 
   private:
     ros::Subscriber sub_neuro_;
+    ros::Subscriber sub_events_;
 
     neurodraw::Rectangle* probablility_l_;
     neurodraw::Rectangle* probablility_r_;

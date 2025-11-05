@@ -5,11 +5,95 @@
   <arg name="decoder_path"  default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/smr/classifier16channels.dat' />
   <arg name="devarg" default='/var/home/piero/data.gdf'/> <!-- put gtec/eegos here -->
 
+  
+  <!-- Threshold -->
+  <arg name="thresholds"  default='0.5 0.49 0.8' />
+
+  <arg name="modality" value="hmm_on" />     <!-- hmm_on hmm_off  -->
+  <arg name="task"     value="simulation" /> <!-- simulation real -->
+
+  <!-- csv folder -->
+  <arg name="csv_filepath"    default='$(env HOME)/Projects/cvs_data/$(arg task)/$(arg modality)/$(arg subject)/' />
+  <!-- create the folder if not exists -->
+  <param name="dummy" command="mkdir -p $(arg csv_filepath)" />
+
+  <!--  Integrator info  -->
+  <arg name="integratorplugin"   default="rosneuro::integrator::Exponential"/>
+  <arg name="alpha"              default='0.985'/>
+  <arg name="rejection"          default='0.6465'/>
+
+
+  <!-- TODO: check the classical BCI data aquisition -->
   <!-- Classical BCI raw aquisition, recorder and sbcni -->
   <include file="$(find rosneuro_launchers)/launch/evaluation.launch">
-    <arg name="subject" value="$(arg subject)" />
+    <arg name="subject"      value="$(arg subject)" />
     <arg name="decoder_path" value="$(arg decoder_path)" />
-    <arg name="devarg" value="$(arg devarg)" />
+    <arg name="devarg"       value="$(arg devarg)" />
+    <arg name="gui"          value="false"/>
+    <arg name="modality"     value="$(arg task)_$(arg modality)" />
   </include>
+
+  <!-- Launch the gazebo simulation -->
+  <group if="$(eval task == 'simulation')"><!-- if="$(arg simulation)"> -->
+    <include file="$(find wheelchair_iaslab_gazebo)/launch/gazebo_hmm_experiment.launch">
+        <arg name="nav_stack" value="false"/>
+      </include>
+
+      <node pkg="tf" type="static_transform_publisher" name="fused_scan_broadcaster" args="0.33 0 0.66 0 0 0 1 wcias_base_footprint fused_scan 100" /> <?ignore  same z of the two lidarss ?>
+    
+    <node pkg="ira_laser_tools" name="laserscan_multi_merger" type="laserscan_multi_merger" output="screen">
+        <param name="destination_frame" value="fused_scan"/>
+        <param name="cloud_destination_topic" value="/merged_cloud"/>
+        <param name="scan_destination_topic" value="/fused_scan"/>
+        <param name="laserscan_topics" value ="/scan_right /scan_left" /> <?ignore  /lidar_camera /stereo_camera      ?> 
+        <param name="angle_min" value="-3.14"/>                           <?ignore  value taken from listening topic  ?>
+        <param name="angle_max" value="3.14"/>                            <?ignore  value taken from listening topic  ?>
+        <param name="angle_increment" value="0.006135923322290182"/>      <?ignore  value taken from listening topic  ?>
+        <param name="scan_time" value="0.10000000149011612"/>             <?ignore  value taken from listening topic  ?>
+        <param name="range_min" value="0.019999999552965164"/>            <?ignore  value taken from listening topic  ?>
+        <param name="range_max" value="5.599999904632568"/>               <?ignore  value taken from listening topic  ?>
+    </node>
+
+  </group>
+  <!-- Launch in the real device -->
+  <group if="$(eval task == 'real')">
+  <!-- <group unless="$(arg simulation)"> -->
+     <include file="$(find wheelchair_iaslab_init)/launch/init.launch">
+       <arg name="real"        value="true"/>
+       <arg name="nav_stack"   value="true"/>
+    </include>
+  </group>
+
+  <!-- Launch the HMM and the HMM control GUI -->
+  <node name="hmm_feedback"   pkg="hmm_feedback" type="hmm_bars" output="screen">
+    <param name="thresholds" value="$(arg thresholds)" />
+    <remap from="/hmm/neuroprediction" to="/hmm/neuroprediction/integrated"/> 
+  </node>
+  <node name="hmm"            pkg="rosneuro_hmm" type="hmmV2.py"   output="screen" />
+  <node name="hmm_comp_trav"  pkg="rosneuro_hmm" type="compute_traversability.py" output="screen">
+    <param name="help" value="$(eval modality == 'hmm_on')" />
+  </node>
+
+  <!-- integrator node -->
+  <node name="integrator_hmm" pkg="rosneuro_integrator" type="integrator" output="screen">
+    <rosparam param="size" subst_value="True">3</rosparam>
+    <rosparam param="plugin" subst_value="True">$(arg integratorplugin)</rosparam>
+    <rosparam param="alpha" subst_value="True">$(arg alpha)</rosparam>
+    <rosparam param="rejection" subst_value="True">$(arg rejection)</rosparam>
+    <remap from="/smr/neuroprediction" to="/hmm/neuroprediction"/>
+    <remap from="/integrated" to="/hmm/neuroprediction/integrated"/>
+  </node>
+
+  <!-- Controller node -->
+  <node name="hmm_wheel_con"  pkg="hmm_wheelchiar_controller" type="hmm_wheelchiar_controller_node" output="screen">
+    <param name="thresholds" value="$(arg thresholds)" />
+    <param name="task"       value="$(eval task == 'simulation')" />
+    <param name="csv_path"   value="$(arg csv_filepath)" />
+    <param name="subject"    value="$(arg subject)" />
+  </node>
+
+  <!-- Save the data -->
+  <!-- TODO: implement this -->
+
 
 </launch>

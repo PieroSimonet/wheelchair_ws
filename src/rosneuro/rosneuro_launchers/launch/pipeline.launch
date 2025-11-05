@@ -16,7 +16,10 @@
 
 	<!-- recorder -->
 		<arg name="autostart" default='true'/>
-		<arg name="filepath"  default='$(env HOME)/Projects/rosneuro_data/' />
+		<arg name="filepath"  default='$(env HOME)/Projects/gdf_recordings/$(arg task)/$(arg modality)/$(arg subject)/' />
+
+	<!-- create the folder if not exists -->
+		<param name="dummy" command="mkdir -p $(arg filepath)" />
 			
 	<!-- processing arguments -->
 		<arg name="lap_path"      default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/laplacian/laplacian16.dat'/>
