@@ -3,7 +3,7 @@
 
   <!-- protocol arguments -->
     <arg name="subject"      default="f1"/>
-    <arg name="task"         default="mi_rhlh"/>
+    <arg name="task"         default="mi_bhbf"/>
     <arg name="modality"     default='evaluation'/>
     <arg name="classes"      default='[773, 771]'/>
     <arg name="trials"       default='[10, 10]'/>
@@ -13,9 +13,10 @@
 
   <!-- acquisition arguments -->
     <arg name="plugin"      default='rosneuro::EGDDevice'/>
-    <arg name="devarg"      default='eego'/>
+    <arg name="devarg"      />
     <arg name="framerate"   default='16'/>
     <arg name="samplerate"  default='512'/>
+		<rosparam command="load" file="$(find rosneuro_launchers)/config/ChainCfg.yaml" />
   
   <!-- recorder -->
     <arg name="autostart"   default='true'/>
@@ -23,10 +24,11 @@
 
   <!-- create the folder if not exists -->
     <param name="dummy" command="mkdir -p $(arg filepath)" />
+		<param name="dummy1" command="mkdir -p $(arg filepath)/raw/" />
 
   <!-- processing arguments -->
-    <arg name="lap_path"      default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/laplacian/laplacian16.dat'/>
-    <arg name="decoder_path"  default='$(env HOME)/cybathlon/rosneuro_data/classifiers/f1_rhlh_20231003.smr.dat'/>
+    <arg name="lap_path"     /> <!-- default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/laplacian/laplacian16.dat'/> -->
+    <arg name="decoder_path" /> <!--  default='$(env HOME)/cybathlon/rosneuro_data/classifiers/f1_rhlh_20231003.smr.dat'/>  -->
     <arg name="n_channels"    default='16'/>
 
   <!-- control framework arguments -->
@@ -49,13 +51,27 @@
     <param name="~devarg"       value="$(arg devarg)"/>
     <param name="~samplerate"   value="$(arg samplerate)"/>
     <param name="~framerate"    value="$(arg framerate)"/>
+    <remap from="/neurodata" to="/raw/neurodata"/>
   </node>
+  
+  <node name="filterchain_node" pkg="rosneuro_filters" type="filterchain_node" output="screen" >
+    <remap from="/neurodata" to="/raw/neurodata"/>
+    <remap from="/neurodata_filtered" to="/neurodata"/>
+		<param name="configname" value="ChainCfg" />
+	</node>	
 
   <!-- recorder node -->
   <node name="recorder" pkg="rosneuro_recorder" type="recorder" >
     <param name="~autostart"    value="$(arg autostart)"/>
     <param name="~filepath"     value="$(arg filepath)"/>
   </node>
+  
+	<!-- recorder node -->
+	<node name="recorder_raw" pkg="rosneuro_recorder" type="recorder" >
+    <remap from="/neurodata" to="/raw/neurodata"/>
+		<param name="~autostart" value="$(arg autostart)"/>
+		<param name="~filepath" value="$(arg filepath)/raw/"/>
+	</node>
 
   <!-- processing node -->
   <node name="smrbci" pkg="rosneuro_processing" type="test_smrbci" output="screen">
