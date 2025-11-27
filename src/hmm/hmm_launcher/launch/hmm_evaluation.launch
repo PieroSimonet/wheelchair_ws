@@ -2,15 +2,17 @@
 <launch>
 
   <arg name="subject" default="s1"/>
-  <arg name="decoder_path"  default='$(env HOME)/Projects/ros/wheelchair_ws/src/rosneuro/rosneuro_launchers/extra/smr/classifier16channels.dat' />
-  <arg name="devarg" default='/var/home/piero/data.gdf'/> <!-- put gtec/eegos here -->
 
+  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/s1_bfbh_20251107.dat' />
+  <arg name="lap_path"      default='$(find hmm_launcher)/extra/lap_eego_hmm16.dat' />
   
-  <!-- Threshold -->
-  <arg name="thresholds"  default='0.5 0.49 0.8' />
+  <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210'/> <!-- put gtec/eegos here -->
 
-  <arg name="modality" value="hmm_on" />     <!-- hmm_on hmm_off  -->
-  <arg name="task"     value="simulation" /> <!-- simulation real -->
+  <!-- Threshold -->
+  <arg name="thresholds"  default='0.75 0.55 0.75' />
+
+  <arg name="modality" value="hmm_on" />     <!-- hmm_on, hmm_off  -->
+  <arg name="task"     value="real" /> <!-- simulation, real -->
 
   <!-- csv folder -->
   <arg name="csv_filepath"    default='$(env HOME)/Projects/cvs_data/$(arg task)/$(arg modality)/$(arg subject)/' />
@@ -28,6 +30,7 @@
   <include file="$(find rosneuro_launchers)/launch/evaluation.launch">
     <arg name="subject"      value="$(arg subject)" />
     <arg name="decoder_path" value="$(arg decoder_path)" />
+    <arg name="lap_path"     value="$(arg lap_path)" />
     <arg name="devarg"       value="$(arg devarg)" />
     <arg name="gui"          value="false"/>
     <arg name="modality"     value="$(arg task)_$(arg modality)" />
@@ -87,7 +90,7 @@
   <!-- Controller node -->
   <node name="hmm_wheel_con"  pkg="hmm_wheelchiar_controller" type="hmm_wheelchiar_controller_node" output="screen">
     <param name="thresholds" value="$(arg thresholds)" />
-    <param name="task"       value="$(eval task == 'simulation')" />
+    <param name="task"       value="$(arg task)" />
     <param name="csv_path"   value="$(arg csv_filepath)" />
     <param name="subject"    value="$(arg subject)" />
   </node>

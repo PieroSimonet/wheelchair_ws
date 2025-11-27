@@ -2,7 +2,7 @@
 <launch>
 
   <arg name="subject" default="s1"/>
-  <arg name="devarg" default='/var/home/piero/data.gdf'/> <!-- put gtec/eegos here -->
+  <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210' />
 
   <include file="$(find rosneuro_launchers)/launch/calibration.launch">
     <arg name="subject" value="$(arg subject)" />

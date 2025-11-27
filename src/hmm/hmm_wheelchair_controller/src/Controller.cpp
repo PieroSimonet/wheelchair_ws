@@ -36,6 +36,14 @@ controller::controller() {
     ros::param::param<std::string>("~subject",  this->sub_name_, "test" );
     ros::param::param<std::string>("~task",     this->task_, "simulation");
 
+    this->is_real_ = (this->task_.compare("real") == 0);
+
+    if (this->is_real_){
+      ROS_INFO("Real device");
+    }else {
+      ROS_INFO("Simulation");
+    }
+
     this->goal_reached_ = false;
     this->threshold_reached_ = false;
     this->has_prob_ = false;
@@ -65,7 +73,7 @@ void controller::callback_probability(const rosneuro_msgs::NeuroOutput::ConstPtr
 }
 
 
-// ------
+// ------ This is just to save the data
 void controller::cb_smr_raw(const rosneuro_msgs::NeuroOutput::ConstPtr& msg) {
     this->smr_raw_ = *msg;
 }
@@ -102,6 +110,7 @@ bool controller::configure() {
     this->sub_probability_ = nh_.subscribe("/hmm/neuroprediction/integrated", 1, &controller::callback_probability, this);
     this->sub_laser_       = nh_.subscribe("/fused_scan", 1, &controller::callback_laser, this);
     this->sub_odom_        = nh_.subscribe("/odometry/filtered", 1, &controller::callback_odom, this);
+    this->sub_nav_stop_    = nh_.subscribe("/goalreached", 1, &controller::callback_goalreach, this);
 
     // Setup additional listeners
     this->sub_smr_raw_        = nh_.subscribe("/smrbci/neuroprediction", 1, &controller::cb_smr_raw, this);
@@ -182,6 +191,10 @@ void controller::check_probability() {
     }
 }
 
+void controller::callback_goalreach(const std_msgs::Bool::ConstPtr& msg) {
+    this->is_sub_goalreached = msg->data;
+}
+
 void controller::check_subgoal() {
 
     double roll, pitch, yaw, current_yaw;
@@ -239,6 +252,30 @@ void controller::check_subgoal() {
         this->send_event(EVENTS_ID.fixation);
         this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(3.0), &controller::end_fixation_callback, this, true);
     }
+}
+
+void controller::check_navgoal() {
+
+    if (this->is_sub_goalreached) {
+        if (!this->is_already_stopped) {
+            this->is_already_stopped = true;
+        } else {
+          return;
+        }
+    }
+
+    // Stop the robot and proceed to the next command
+    this->send_command(geometry_msgs::Twist());
+    this->is_robot_moving_ = false;
+    this->require_reset_integration();
+    this->pid_w_.reset();
+    this->pid_x_.reset();
+
+    // Set the gui as a fixation
+    this->is_in_fixation_gui_ = true;
+    this->send_event(EVENTS_ID.fixation);
+    this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(3.0), &controller::end_fixation_callback, this, true);
+
 }
 
 void controller::end_fixation_callback(const ros::TimerEvent& ev) {
@@ -334,6 +371,31 @@ void controller::generate_sub_goal() {
 
 }
 
+void controller::generate_navgoal() {
+
+    if (this->is_command_accetable(this->current_command_)) {
+        this->fake_joy_ = sensor_msgs::Joy();
+        this->fake_joy_.header.stamp = ros::Time::now();
+        this->fake_joy_.axes    = {0,0,0,0,0,0,0,0};
+        this->fake_joy_.buttons = {0,0,0,0,0,0,0,0};
+        switch (this->current_command_) {
+            case controller::command::LEFT:
+                this->fake_joy_.axes[6] =  1;
+                break;
+            case controller::command::CENTER:
+                this->fake_joy_.axes[7] =  1;
+                break;
+            case controller::command::RIGHT:
+                this->fake_joy_.axes[6] = -1;
+                break;
+        }
+        // Send the fake joy cmd
+        this->pub_fake_joy_.publish(this->fake_joy_);
+    }else {
+        this->num_reject_cmds_++;
+    }
+}
+
 void controller::run() {
     ros::Rate loop_rate(this->rate_freq_);
 
@@ -344,13 +406,27 @@ void controller::run() {
 
     while (ros::ok() && !this->goal_reached_) {
         if (this->is_robot_moving_) {
-          this->send_command(this->generate_command());
-          this->check_subgoal();
+          // Here we need to divide two words simulation and real
+          if (this->is_real_) {
+              // The real devices
+              this->check_navgoal();
+          } else {
+              // The simulation
+              this->send_command(this->generate_command());
+              this->check_subgoal();
+          }
         }else if (this->has_prob_ && !this->is_in_fixation_gui_) {
             this->check_probability();
 
             if (this->threshold_reached_) {
-                this->generate_sub_goal();
+                if (this->is_real_) {
+                    // Real devices 
+                    this->generate_navgoal();
+                    this->is_already_stopped = false;
+                } else {
+                    // Simulation device
+                    this->generate_sub_goal();
+                }
                 this->is_robot_moving_ = true;
                 this->threshold_reached_ = false;
                 this->require_reset_integration();
@@ -366,7 +442,7 @@ void controller::run() {
         ros::spinOnce();
     }
 
-    ROS_ERROR("----------- RUN ENDED ---------------");
+    ROS_WARN("----------- RUN ENDED ---------------");
 
     // Save the data
     this->close_procedure();
@@ -466,7 +542,7 @@ void controller::update_save_file() {
 
     this->file_ << new_information << std::endl;
 
-    ROS_INFO("Saved data: %s", new_information.c_str());
+    // ROS_INFO("Saved data: %s", new_information.c_str());
 }
 
 void controller::close_procedure() {

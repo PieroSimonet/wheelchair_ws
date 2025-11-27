@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="subject" default="s1"/>
+
+  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/s1_bfbh_20251107.dat' />
+  <arg name="lap_path"      default='$(find hmm_launcher)/extra/lap_eego_hmm16.dat' />
+  
+  <arg name="devarg"        default='eego|EEG_MASK|0x0001B7008031C620|CAP|210'/> <!-- put gtec/eegos here -->
+
+  <!-- Threshold -->
+  <arg name="thresholds"  default='0.75 0.55 0.75' />
+
+  <arg name="modality" value="evaluation" />     <!-- hmm_on hmm_off  -->
+  <arg name="task"     value="test" /> <!-- simulation real -->
+
+  <!-- csv folder -->
+  <arg name="csv_filepath"    default='$(env HOME)/Projects/cvs_data/$(arg task)/$(arg modality)/$(arg subject)/' />
+  <!-- create the folder if not exists -->
+  <param name="dummy" command="mkdir -p $(arg csv_filepath)" />
+
+  <!--  Integrator info  -->
+  <arg name="integratorplugin"   default="rosneuro::integrator::Exponential"/>
+  <arg name="alpha"              default='0.985'/>
+  <arg name="rejection"          default='0.6465'/>
+
+
+  <!-- TODO: check the classical BCI data aquisition -->
+  <!-- Classical BCI raw aquisition, recorder and sbcni -->
+  <include file="$(find rosneuro_launchers)/launch/evaluation.launch">
+    <arg name="subject"      value="$(arg subject)" />
+    <arg name="decoder_path" value="$(arg decoder_path)" />
+    <arg name="lap_path"     value="$(arg lap_path)" />
+    <arg name="devarg"       value="$(arg devarg)" />
+    <arg name="gui"          value="true"/>
+  </include>
+
+  <!-- Launch the HMM and the HMM control GUI -->
+  <node name="hmm_feedback"   pkg="hmm_feedback" type="hmm_bars" output="screen">
+    <param name="thresholds" value="$(arg thresholds)" />
+    <remap from="/hmm/neuroprediction" to="/hmm/neuroprediction/integrated"/> 
+  </node>
+  <node name="hmm"            pkg="rosneuro_hmm" type="hmmV2.py"   output="screen" />
+  <node name="hmm_comp_trav"  pkg="rosneuro_hmm" type="compute_traversability.py" output="screen">
+    <param name="help" value="false" />
+  </node>
+
+  <!-- integrator node -->
+  <node name="integrator_hmm" pkg="rosneuro_integrator" type="integrator" output="screen">
+    <rosparam param="size" subst_value="True">3</rosparam>
+    <rosparam param="plugin" subst_value="True">$(arg integratorplugin)</rosparam>
+    <rosparam param="alpha" subst_value="True">$(arg alpha)</rosparam>
+    <rosparam param="rejection" subst_value="True">$(arg rejection)</rosparam>
+    <remap from="/smr/neuroprediction" to="/hmm/neuroprediction"/>
+    <remap from="/integrated" to="/hmm/neuroprediction/integrated"/>
+  </node>
+
+</launch>

@@ -5,10 +5,12 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose.h>
 #include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/Joy.h>
 #include "rosneuro_msgs/NeuroOutput.h"
 #include "rosneuro_msgs/NeuroEvent.h"
 #include <string>
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/Bool.h>
 #include <gazebo_msgs/GetModelState.h>
 #include <rosgraph_msgs/Clock.h>
 #include <std_srvs/Empty.h>
@@ -66,6 +68,8 @@ class controller {
         void callback_laser(const sensor_msgs::LaserScan::ConstPtr& msg);
         void callback_odom(const nav_msgs::Odometry::ConstPtr& msg);
 
+        void callback_goalreach(const std_msgs::Bool::ConstPtr& msg);
+
         void cb_smr_raw(const rosneuro_msgs::NeuroOutput::ConstPtr& msg);
         void cb_smr_integrated(const rosneuro_msgs::NeuroOutput::ConstPtr& msg);
         void cb_hmm_raw(const rosneuro_msgs::NeuroOutput::ConstPtr& msg);
@@ -84,6 +88,9 @@ class controller {
         void check_goal();
         void close_procedure();
         void generate_sub_goal();
+
+        void generate_navgoal();
+        void check_navgoal();
 
         void init_save_file();
         void update_save_file();
@@ -112,6 +119,7 @@ class controller {
         ros::Subscriber sub_probability_;
         ros::Subscriber sub_laser_;
         ros::Subscriber sub_odom_;
+        ros::Subscriber sub_nav_stop_;
 
         // Subscriber on different values
         ros::Subscriber sub_smr_raw_, sub_smr_integrated_, sub_hmm_raw_;
@@ -122,6 +130,7 @@ class controller {
 
         ros::Publisher pub_cmd_;
         ros::Publisher pub_evs_;
+        ros::Publisher pub_fake_joy_;
 
         ros::Timer fixation_callback_timer_;
 
@@ -134,6 +143,8 @@ class controller {
         nav_msgs::Odometry         current_odom_ = nav_msgs::Odometry();
         sensor_msgs::LaserScan     current_laser_;
         rosneuro_msgs::NeuroOutput current_prob_ = rosneuro_msgs::NeuroOutput();
+
+        sensor_msgs::Joy fake_joy_ = sensor_msgs::Joy();
 
         // Additional information
         rosneuro_msgs::NeuroOutput smr_raw_ = rosneuro_msgs::NeuroOutput();
@@ -200,8 +211,12 @@ class controller {
         std::string file_name_;
         std::string file_path_;
         std::string task_; // simulation or real device
+        bool is_real_ = false;
         
         int last_event_;
+
+        bool is_sub_goalreached = false;
+        bool is_already_stopped = true;
 
 };
 
