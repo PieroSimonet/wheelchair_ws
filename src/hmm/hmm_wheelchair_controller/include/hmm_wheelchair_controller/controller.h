@@ -67,6 +67,7 @@ class controller {
         void callback_probability(const rosneuro_msgs::NeuroOutput::ConstPtr& msg);
         void callback_laser(const sensor_msgs::LaserScan::ConstPtr& msg);
         void callback_odom(const nav_msgs::Odometry::ConstPtr& msg);
+        void callback_events(const rosneuro_msgs::NeuroEvent::ConstPtr& msg);
 
         void callback_goalreach(const std_msgs::Bool::ConstPtr& msg);
 
@@ -81,6 +82,8 @@ class controller {
         void is_goal_reached();
 
         void end_fixation_callback(const ros::TimerEvent& ev);
+        void cue_not_reached_callback(const ros::TimerEvent& ev);
+        void end_visual_cue_callback(const ros::TimerEvent& ev);
 
         void require_reset_integration();
 
@@ -108,6 +111,7 @@ class controller {
         bool goal_reached_;
         bool threshold_reached_;
         bool is_robot_moving_;
+        bool is_waiting_for_joyevent_;
 
         // I need to check if I need to wait for fixation
         bool is_in_fixation_gui_;
@@ -120,6 +124,7 @@ class controller {
         ros::Subscriber sub_laser_;
         ros::Subscriber sub_odom_;
         ros::Subscriber sub_nav_stop_;
+        ros::Subscriber sub_events_;
 
         // Subscriber on different values
         ros::Subscriber sub_smr_raw_, sub_smr_integrated_, sub_hmm_raw_;
@@ -133,6 +138,8 @@ class controller {
         ros::Publisher pub_fake_joy_;
 
         ros::Timer fixation_callback_timer_;
+        ros::Timer cue_not_reached_timer_;
+        ros::Timer visual_cue_timer_;
 
         ros::ServiceClient gazebo_get_model_state_;
 
@@ -156,6 +163,8 @@ class controller {
 
         int num_commands_    = 0;
         int num_reject_cmds_ = 0;
+
+        int requested_cue_ = 0;
 
         // Subgoal
         geometry_msgs::Pose subgoal_;

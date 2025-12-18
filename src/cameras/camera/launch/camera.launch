@@ -4,7 +4,7 @@
   <param name="clip_distance" value="3"/>
 
     <include ns="camera" file="$(find realsense2_camera)/launch/rs_rgbd.launch"> 
-      <!-- 	<arg name="camera"             value="stereo_camera" /> -->
+      	<arg name="camera"             value="camera_top" />
   <!-- <arg name="filters"            value="pointcloud" /> -->
   <arg name="enable_pointcloud"   default="true"/>
 

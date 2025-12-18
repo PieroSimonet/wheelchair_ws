@@ -11,6 +11,7 @@
 #include "neurodraw/Rectangle.h"
 #include "neurodraw/Circle.h"
 #include "neurodraw/Cross.h"
+#include "neurodraw/Arrow.h"
 
 namespace rosneuro {
 
@@ -65,6 +66,11 @@ class bars {
     neurodraw::Circle* circle_l_;
     neurodraw::Circle* circle_r_;
     neurodraw::Circle* circle_c_;
+
+    // New Arrow
+    neurodraw::Arrow* arrow_l_;
+    neurodraw::Arrow* arrow_r_;
+    neurodraw::Arrow* arrow_c_;
 
     neurodraw::Cross* fixation_cross_;
 

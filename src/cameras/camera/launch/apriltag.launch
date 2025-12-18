@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="camera_base_name"  default="camera_top"  />
+  <arg name="camera_base_name"  default="camera/camera_top"  />
   <arg name="apriltag_config_yaml"  default="$(find camera)/cfg/tags.yaml"      />
   
   <!-- start Apriltags detector -->

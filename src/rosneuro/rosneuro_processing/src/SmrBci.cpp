@@ -10,7 +10,7 @@ SmrBci::SmrBci(void) : p_nh_("~") {
 	this->sub_topic_data_	 = "/neurodata";
 	this->pub_topic_data_	=  "neuroprediction";
 
-       	this->buffer_ = new wtk::proc::RingBuffer();
+    this->buffer_ = new wtk::proc::RingBuffer();
 	this->laplacian_ = new wtk::proc::Laplacian();
 	this->psd_ = new wtk::proc::Pwelch();
 	

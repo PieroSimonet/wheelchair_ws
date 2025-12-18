@@ -34,21 +34,23 @@ controller::controller() {
     ros::param::param<int>("~loop_rate", this->rate_freq_, 50);
     ros::param::param<std::string>("~csv_path", this->file_path_, "/tmp/");
     ros::param::param<std::string>("~subject",  this->sub_name_, "test" );
-    ros::param::param<std::string>("~task",     this->task_, "simulation");
+    ros::param::param<std::string>("~task",     this->task_, "real");
 
-    this->is_real_ = (this->task_.compare("real") == 0);
+    // Check if the command is given
+    this->is_real_ = false; (this->task_.compare("real") == 0);
 
-    if (this->is_real_){
+    /*if (this->is_real_){
       ROS_INFO("Real device");
     }else {
       ROS_INFO("Simulation");
-    }
+    }*/
 
     this->goal_reached_ = false;
     this->threshold_reached_ = false;
     this->has_prob_ = false;
     this->is_robot_moving_ = false;
     this->is_in_fixation_gui_ = false;
+    this->is_waiting_for_joyevent_ = false;
 
     this->final_odom_ = nav_msgs::Odometry();
     this->final_odom_.pose.pose.position.x = 15.0;
@@ -63,6 +65,7 @@ controller::controller() {
     this->smr_integrated_.softpredict.data = {0.0f, 0.0f};
     this->hmm_raw_.softpredict.data = {0.0f, 0.0f, 0.0f};
     this->current_prob_.softpredict.data = {0.0f, 0.0f, 0.0f};
+
 }
 
 controller::~controller() {}
@@ -95,6 +98,26 @@ void controller::callback_odom(const nav_msgs::Odometry::ConstPtr& msg) {
     this->current_odom_ = *msg;
 }
 
+void controller::callback_events(const rosneuro_msgs::NeuroEvent::ConstPtr& msg) {
+    // I need this only in the case "real"
+
+    if(this->task_.compare("real") != 0){
+        this->is_waiting_for_joyevent_ = false;
+    }
+
+    if (this->is_waiting_for_joyevent_) {
+        switch (msg->event) {
+          case 2783:
+          case 2773:
+          case 2771:
+            this->is_waiting_for_joyevent_ = false;
+            this->requested_cue_ = msg->event - 2000;
+            break;
+        } 
+    }
+}
+
+
 bool controller::is_gazebo_ready() {
     //wait for the service and ask the results
     //ros::service::waitForService("/gazebo/get_model_state");
@@ -107,7 +130,7 @@ bool controller::is_gazebo_ready() {
 bool controller::configure() {
 
     // Setup listeners
-    this->sub_probability_ = nh_.subscribe("/hmm/neuroprediction/integrated", 1, &controller::callback_probability, this);
+    this->sub_probability_ = nh_.subscribe("/hmm/neuroprediction/integrated", 10, &controller::callback_probability, this);
     this->sub_laser_       = nh_.subscribe("/fused_scan", 1, &controller::callback_laser, this);
     this->sub_odom_        = nh_.subscribe("/odometry/filtered", 1, &controller::callback_odom, this);
     this->sub_nav_stop_    = nh_.subscribe("/goalreached", 1, &controller::callback_goalreach, this);
@@ -116,6 +139,7 @@ bool controller::configure() {
     this->sub_smr_raw_        = nh_.subscribe("/smrbci/neuroprediction", 1, &controller::cb_smr_raw, this);
     this->sub_smr_integrated_ = nh_.subscribe("/smr/neuroprediction/integrated", 1, &controller::cb_smr_integrated, this);
     this->sub_hmm_raw_        = nh_.subscribe("/hmm/neuroprediction", 1, &controller::cb_hmm_raw, this);
+    this->sub_events_         = nh_.subscribe("/events/bus", 10, &controller::callback_events, this);
 
     // Setup services
     this->srv_reset_integration_     = nh_.serviceClient<std_srvs::Empty>("/integrator/reset");
@@ -123,11 +147,14 @@ bool controller::configure() {
     this->srv_reset_hmm_             = nh_.serviceClient<std_srvs::Empty>("/hmm/reset");
 
     // Setup publishers
-    this->pub_cmd_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel_raw", 1);
+    this->pub_cmd_ = nh_.advertise<geometry_msgs::Twist>("/gui/cmd_vel", 1);
     this->pub_evs_ = nh_.advertise<rosneuro_msgs::NeuroEvent>("/events/bus", 1);
+    this->pub_fake_joy_ = nh_.advertise<sensor_msgs::Joy>("/joy", 1);
 
-    while(!this->is_gazebo_ready()) {
-        ros::Duration(0.1).sleep();
+    if (this->task_.compare("real") == 1) {
+        while(!this->is_gazebo_ready()) {
+            ros::Duration(0.1).sleep();
+        }
     }
 
     ROS_INFO("Gazebo is ready, start recoding");
@@ -165,6 +192,7 @@ void controller::check_goal() {
 }
 
 void controller::require_reset_integration() {
+    this->current_prob_.softpredict.data = {0.0,0.0,0.0};
     std_srvs::Empty emp;
     this->srv_reset_integration_.call(emp);
     this->srv_reset_integration_hmm_.call(emp);
@@ -188,6 +216,11 @@ void controller::check_probability() {
         ROS_INFO("Right threshold reached");
         this->current_command_ = controller::command::RIGHT;
         this->send_event(EVENTS_ID.bf);
+    }
+
+    if (this->threshold_reached_) {
+      ros::Duration(0.1).sleep();
+      this->send_event(EVENTS_ID.hit);
     }
 }
 
@@ -247,8 +280,12 @@ void controller::check_subgoal() {
         this->pid_w_.reset();
         this->pid_x_.reset();
 
+        //this->subgoal_.position.x = this->current_odom_.pose.pose.position.x;
+        //this->subgoal_.position.y = this->current_odom_.pose.pose.position.y;
+
         // Set the gui as a fixation
         this->is_in_fixation_gui_ = true;
+        this->is_waiting_for_joyevent_ = true;
         this->send_event(EVENTS_ID.fixation);
         this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(3.0), &controller::end_fixation_callback, this, true);
     }
@@ -262,6 +299,8 @@ void controller::check_navgoal() {
         } else {
           return;
         }
+    }else {
+        return;
     }
 
     // Stop the robot and proceed to the next command
@@ -273,16 +312,50 @@ void controller::check_navgoal() {
 
     // Set the gui as a fixation
     this->is_in_fixation_gui_ = true;
+    this->is_waiting_for_joyevent_ = true;
     this->send_event(EVENTS_ID.fixation);
+    this->require_reset_integration();
     this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(3.0), &controller::end_fixation_callback, this, true);
 
 }
 
 void controller::end_fixation_callback(const ros::TimerEvent& ev) {
-    ROS_ERROR("------------");
-    this->is_in_fixation_gui_ = false;
+
+    //ROS_ERROR("------------ ");
+
+    if (this->is_waiting_for_joyevent_) {
+        //ROS_ERROR("AAAAAA ");
+        // Wait for the user joy
+        this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(1.0), &controller::end_fixation_callback, this, true);
+    } else {
+        //ROS_ERROR("BBBBB ");
+        // PRINT CUE 
+        this->send_event(this->requested_cue_);
+        this->visual_cue_timer_ = this->nh_.createTimer(ros::Duration(2.0), &controller::end_visual_cue_callback, this, true);
+    }
+}
+
+void controller::end_visual_cue_callback(const ros::TimerEvent& ev) {
     this->require_reset_integration();
+    this->is_in_fixation_gui_ = false;
     this->send_event(EVENTS_ID.continous_feedback);
+    // Launch the timer callback for the threshold not reached
+    this->cue_not_reached_timer_ = this->nh_.createTimer(ros::Duration(6.0), &controller::cue_not_reached_callback, this, true);
+}
+
+
+void controller::cue_not_reached_callback(const ros::TimerEvent& ev) {
+    if (!this->threshold_reached_) {
+        // Ensure that it will not do the other control
+        this->is_in_fixation_gui_ = true;
+        this->send_event(EVENTS_ID.miss);
+       // Set the event in the save file
+       this->update_save_file();
+       // Retry the cue from the fixation
+       this->require_reset_integration();
+       this->send_event(EVENTS_ID.fixation);
+       this->fixation_callback_timer_ = this->nh_.createTimer(ros::Duration(3.0), &controller::end_fixation_callback, this, true);
+    }
 }
 
 
@@ -292,7 +365,7 @@ geometry_msgs::Twist controller::generate_command() {
 
     tf2::Quaternion q(
         this->subgoal_.orientation.x,
-        this->subgoal_.orientation.y,
+    this->subgoal_.orientation.y,
         this->subgoal_.orientation.z,
         this->subgoal_.orientation.w
     );
@@ -313,6 +386,8 @@ geometry_msgs::Twist controller::generate_command() {
     float dx = this->current_odom_.pose.pose.position.x - this->subgoal_.position.x;
     float dy = this->current_odom_.pose.pose.position.y - this->subgoal_.position.y;
     float dist = sqrt(dx*dx + dy*dy);
+
+    ROS_INFO("------------ %f", dist);
 
     geometry_msgs::Twist cmd;
 
@@ -342,19 +417,25 @@ void controller::generate_sub_goal() {
     double roll, pitch, yaw;
     tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-    float delta_d = 6.0f;
+    float delta_d = 6.0f; 
+    float sub_yaw = M_PI/2.0f;
+
+    if (this->task_.compare("real") == 0) {
+        delta_d = 2.5f;
+        sub_yaw = M_PI/2.0f;
+    }
 
     if (this->is_command_accetable(this->current_command_)) {
         switch (this->current_command_) {
             case controller::command::LEFT:
-                yaw += M_PI/2.0f;
+                yaw += sub_yaw;
                 break;
             case controller::command::CENTER:
                 this->subgoal_.position.x += delta_d * std::cos(yaw);
                 this->subgoal_.position.y += delta_d * std::sin(yaw);
                 break;
             case controller::command::RIGHT:
-                yaw -= M_PI/2.0f;
+                yaw -= sub_yaw;
                 break;
           
         }
@@ -402,7 +483,16 @@ void controller::run() {
     this->init_save_file();
     this->send_event(EVENTS_ID.init);
 
+     if (this->is_real_) {
+        // The real devices
+        this->check_navgoal();
+    } else {
+        // The simulation
+        this->check_subgoal();
+    }
+
     this->check_subgoal();
+
 
     while (ros::ok() && !this->goal_reached_) {
         if (this->is_robot_moving_) {
@@ -419,6 +509,9 @@ void controller::run() {
             this->check_probability();
 
             if (this->threshold_reached_) {
+                // Close the timer callback
+                this->cue_not_reached_timer_.stop();
+
                 if (this->is_real_) {
                     // Real devices 
                     this->generate_navgoal();
@@ -432,8 +525,11 @@ void controller::run() {
                 this->require_reset_integration();
                 this->num_commands_++;
             }
-            this->send_command(geometry_msgs::Twist()); // Send "zero" cmd
+            if (!this->is_real_) {
+                this->send_command(geometry_msgs::Twist()); // Send "zero" cmd
+            }
         }
+
         this->check_goal();
 
         this->update_save_file();
@@ -450,6 +546,11 @@ void controller::run() {
 }
 
 bool controller::is_command_accetable(controller::command cmd) {
+
+    // TODO CHECK THE REQUESTED DIRECTION
+    //if (this->is_real_)
+    //    return true;
+
     if (cmd != controller::command::CENTER) 
         return true; // I only need to check if the wheelchair could go straight 
 
@@ -472,7 +573,7 @@ bool controller::is_command_accetable(controller::command cmd) {
         idx_angle++;
     }
 
-    bool request = min_distance > 6.0f;
+    bool request = min_distance > 1.6f;
     
     if (!request) 
       this->send_event(EVENTS_ID.error_rq);
@@ -534,7 +635,7 @@ void controller::update_save_file() {
 
     new_information += std::to_string(this->smr_raw_.softpredict.data[0]) + "," + std::to_string(this->smr_raw_.softpredict.data[1]) + "," + std::to_string(this->smr_integrated_.softpredict.data[0]) + "," + std::to_string(this->smr_integrated_.softpredict.data[1]) + ",";
 
-  new_information += std::to_string(this->hmm_raw_.softpredict.data[0]) + "," + std::to_string(this->hmm_raw_.softpredict.data[1]) + "," + std::to_string(this->hmm_raw_.softpredict.data[2]) + ",";
+    new_information += std::to_string(this->hmm_raw_.softpredict.data[0]) + "," + std::to_string(this->hmm_raw_.softpredict.data[1]) + "," + std::to_string(this->hmm_raw_.softpredict.data[2]) + ",";
 
     new_information += std::to_string(this->current_prob_.softpredict.data[0]) + "," + std::to_string(this->current_prob_.softpredict.data[1]) + "," + std::to_string(this->current_prob_.softpredict.data[2]) + ",";
 

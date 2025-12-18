@@ -1,29 +1,37 @@
 <?xml version="1.0"?>
 <launch>
 
-  <arg name="subject" default="s1"/>
+  <arg name="subject" default="s-"/>
 
-  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/s1_bfbh_20251107.dat' />
+  <arg name="save_bag"          default="True" />
+
+  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/s2_bhbf_20251211.dat' />
   <arg name="lap_path"      default='$(find hmm_launcher)/extra/lap_eego_hmm16.dat' />
   
   <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210'/> <!-- put gtec/eegos here -->
 
   <!-- Threshold -->
-  <arg name="thresholds"  default='0.75 0.55 0.75' />
+  <arg name="thresholds"  default='0.61 0.51 0.65' />
 
   <arg name="modality" value="hmm_on" />     <!-- hmm_on, hmm_off  -->
-  <arg name="task"     value="real" /> <!-- simulation, real -->
+  <arg name="task"     value="simulation" /> <!-- simulation, real -->
 
   <!-- csv folder -->
   <arg name="csv_filepath"    default='$(env HOME)/Projects/cvs_data/$(arg task)/$(arg modality)/$(arg subject)/' />
+  <arg name="bag_filepath"    default='$(env HOME)/Projects/bag_data/$(arg task)/$(arg modality)/$(arg subject)/' />
+
   <!-- create the folder if not exists -->
   <param name="dummy" command="mkdir -p $(arg csv_filepath)" />
+  <param name="dummy3" command="mkdir -p $(arg bag_filepath)" />
+
 
   <!--  Integrator info  -->
   <arg name="integratorplugin"   default="rosneuro::integrator::Exponential"/>
   <arg name="alpha"              default='0.985'/>
   <arg name="rejection"          default='0.6465'/>
 
+  <!-- Hmm config -->
+  <rosparam command="load" file="$(find rosneuro_hmm)/cfg/HmmCfg.yaml"/>
 
   <!-- TODO: check the classical BCI data aquisition -->
   <!-- Classical BCI raw aquisition, recorder and sbcni -->
@@ -65,6 +73,11 @@
        <arg name="real"        value="true"/>
        <arg name="nav_stack"   value="true"/>
     </include>
+
+     <!-- Camera detection -->
+    <include file="$(find camera)/launch/detection.launch">
+    </include>
+
   </group>
 
   <!-- Launch the HMM and the HMM control GUI -->
@@ -72,8 +85,11 @@
     <param name="thresholds" value="$(arg thresholds)" />
     <remap from="/hmm/neuroprediction" to="/hmm/neuroprediction/integrated"/> 
   </node>
-  <node name="hmm"            pkg="rosneuro_hmm" type="hmmV2.py"   output="screen" />
+  <node name="hmm"            pkg="rosneuro_hmm" type="hmmV2.py"   output="screen">
+    <param name="cfg_name"       value='HmmCfg'/>
+  </node>
   <node name="hmm_comp_trav"  pkg="rosneuro_hmm" type="compute_traversability.py" output="screen">
+    <param name="task" value="$(arg task)" />
     <param name="help" value="$(eval modality == 'hmm_on')" />
   </node>
 
@@ -97,6 +113,11 @@
 
   <!-- Save the data -->
   <!-- TODO: implement this -->
+  <group if="$(arg save_bag)" >
+    <node pkg="rosbag" type="record" args="-o $(arg bag_filepath)
+      /joy /cmd_vel /encoder_counter /events/bus  /odometry/filtered /tag_detections /hmm/traversability_matrix
+      /hmm/neuroprediction /hmm/neuroprediction/integrated /smrbci/neuroprediction /smr/neuroprediction/integrated" name="record" output="screen"/>
+  </group>
 
 
 </launch>

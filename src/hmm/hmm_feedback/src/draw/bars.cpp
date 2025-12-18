@@ -80,6 +80,11 @@ void bars::setup_scene(void) {
   this->circle_r_ = new neurodraw::Circle(0.15f, true, neurodraw::Palette::red);
   this->circle_c_ = new neurodraw::Circle(0.15f, true, neurodraw::Palette::yellow);
 
+  // New arrow
+  this->arrow_l_ = new neurodraw::Arrow(0.35f, 0.35f, true, neurodraw::Palette::blue);
+  this->arrow_r_ = new neurodraw::Arrow(0.35f, 0.35f, true, neurodraw::Palette::red);
+  this->arrow_c_ = new neurodraw::Arrow(0.35f, 0.35f, true, neurodraw::Palette::yellow);
+
   this->treshold_l_->move(-1.0f, this->f_treshold_l_-0.5f); // TODO: check this subtraction
   this->treshold_r_->move( 1.0f, this->f_treshold_r_-0.5f);
   this->treshold_c_->move( 0.0f, this->f_treshold_c_-0.5f);
@@ -101,6 +106,15 @@ void bars::setup_scene(void) {
   this->circle_r_->move( 0.0f, 0.8f); 
   this->circle_c_->move( 0.0f, 0.8f); 
 
+  // New Arrow
+  
+  this->arrow_c_->rotate(-90.0);
+  this->arrow_r_->rotate(180.0);
+
+  this->arrow_l_->move( 0.0f, 0.8f);
+  this->arrow_r_->move( 0.0f, 0.8f);
+  this->arrow_c_->move( 0.0f, 0.8f);
+
   /*this->engine_->add(this->probablility_l_);
   this->engine_->add(this->probablility_r_);
   this->engine_->add(this->probablility_c_);*/
@@ -120,6 +134,11 @@ void bars::setup_scene(void) {
   this->engine_->add(this->circle_l_);
   this->engine_->add(this->circle_r_);
   this->engine_->add(this->circle_c_);
+
+  // New Arrow
+  this->engine_->add(this->arrow_l_);
+  this->engine_->add(this->arrow_r_);
+  this->engine_->add(this->arrow_c_);
 
   this->engine_->add(this->fixation_cross_);
 
@@ -151,6 +170,10 @@ void bars::clear_scene() {
   this->treshold_l_->hide();
   this->treshold_r_->hide();
   this->treshold_c_->hide();
+
+  this->arrow_l_->hide();
+  this->arrow_r_->hide();
+  this->arrow_c_->hide();
 }
 
 void bars::show_feedback() {
@@ -178,13 +201,13 @@ void bars::show_fixation() {
 void bars::show_task(Task t) {
   switch (t) {
   case Task::CENTER:
-    this->circle_c_->show();
+    this->arrow_c_->show();
     break;
   case Task::LEFT:
-    this->circle_l_->show();
+    this->arrow_l_->show();
     break;
   case Task::RIGHT:
-    this->circle_r_->show();
+    this->arrow_r_->show();
     break;
   }
 }
@@ -196,13 +219,24 @@ void bars::cb_events(const rosneuro_msgs::NeuroEvent::ConstPtr& msg) {
       this->show_fixation();
       break;
     case 781:
-      this->clear_scene();
+      // this->clear_scene();
       this->show_feedback();
       break;
     case 783:
+      this->clear_scene();
+      this->show_task(Task::CENTER);
+      break;
     case 771:
+      this->clear_scene();
+      this->show_task(Task::RIGHT);
+      break;
     case 773:
-    // Reached the tresholds
+      this->clear_scene();
+      this->show_task(Task::LEFT);
+      break;
+    case 897:
+    case 898:
+      // Hit and Miss
       this->clear_scene();
       break;
   }

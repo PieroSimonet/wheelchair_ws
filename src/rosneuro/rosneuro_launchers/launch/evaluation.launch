@@ -5,9 +5,9 @@
     <arg name="subject"      default="f1"/>
     <arg name="task"         default="mi_bhbf"/>
     <arg name="modality"     default='evaluation'/>
-    <arg name="classes"      default='[773, 771]'/>
-    <arg name="trials"       default='[10, 10]'/>
-    <arg name="thresholds"   default='[1.0, 1.0]'/>
+    <arg name="classes"      default='[773, 771, 783]'/>
+    <arg name="trials"       default='[8, 8, 8]'/>
+    <arg name="thresholds"   default='[0.7, 0.7]'/>
     <arg name="extra"     	 default=""/>
     <arg name="gui"          default="true"/>
 
