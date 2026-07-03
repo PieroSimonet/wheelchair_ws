@@ -7,7 +7,7 @@ bars::bars(void) {
   this->sub_events_ = this->nh_.subscribe("/events/bus", 1, &bars::cb_events, this);
   this->user_quit_ = false;
   this->engine_ = new neurodraw::Engine("bars");
-	this->engine_->on_keyboard(&bars::on_keyboard_event, this);
+  this->engine_->on_keyboard(&bars::on_keyboard_event, this);
   this->current_probablility_ = std::vector<float>(2, 0.0f);
 
 }
@@ -219,7 +219,7 @@ void bars::cb_events(const rosneuro_msgs::NeuroEvent::ConstPtr& msg) {
       this->show_fixation();
       break;
     case 781:
-      // this->clear_scene();
+      this->clear_scene();
       this->show_feedback();
       break;
     case 783:

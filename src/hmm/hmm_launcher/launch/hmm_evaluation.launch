@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
 <launch>
 
-  <arg name="subject" default="s-"/>
+  <arg name="subject" default="test"/>
 
   <arg name="save_bag"          default="True" />
 
-  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/s2_bhbf_20251211.dat' />
+  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/m4_bhbf_20260217.dat' />
   <arg name="lap_path"      default='$(find hmm_launcher)/extra/lap_eego_hmm16.dat' />
   
-  <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210'/> <!-- put gtec/eegos here -->
+  <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210|BIP_MASK|0x000001'/> <!-- put gtec/eegos here -->
 
   <!-- Threshold -->
-  <arg name="thresholds"  default='0.61 0.51 0.65' />
+  <arg name="thresholds"  default='0.6 0.4 0.6' />
 
   <arg name="modality" value="hmm_on" />     <!-- hmm_on, hmm_off  -->
   <arg name="task"     value="simulation" /> <!-- simulation, real -->
@@ -42,6 +42,7 @@
     <arg name="devarg"       value="$(arg devarg)" />
     <arg name="gui"          value="false"/>
     <arg name="modality"     value="$(arg task)_$(arg modality)" />
+    <arg name='thresholds'   value='[1.0, 1.0]' />
   </include>
 
   <!-- Launch the gazebo simulation -->
@@ -50,7 +51,7 @@
         <arg name="nav_stack" value="false"/>
       </include>
 
-      <node pkg="tf" type="static_transform_publisher" name="fused_scan_broadcaster" args="0.33 0 0.66 0 0 0 1 wcias_base_footprint fused_scan 100" /> <?ignore  same z of the two lidarss ?>
+      <!-- <node pkg="tf" type="static_transform_publisher" name="fused_scan_broadcaster" args="0.33 0 0.66 0 0 0 1 wcias_base_footprint fused_scan 100" /> <?ignore  same z of the two lidarss ?>
     
     <node pkg="ira_laser_tools" name="laserscan_multi_merger" type="laserscan_multi_merger" output="screen">
         <param name="destination_frame" value="fused_scan"/>
@@ -63,7 +64,7 @@
         <param name="scan_time" value="0.10000000149011612"/>             <?ignore  value taken from listening topic  ?>
         <param name="range_min" value="0.019999999552965164"/>            <?ignore  value taken from listening topic  ?>
         <param name="range_max" value="5.599999904632568"/>               <?ignore  value taken from listening topic  ?>
-    </node>
+    </node> -->
 
   </group>
   <!-- Launch in the real device -->
@@ -71,7 +72,7 @@
   <!-- <group unless="$(arg simulation)"> -->
      <include file="$(find wheelchair_iaslab_init)/launch/init.launch">
        <arg name="real"        value="true"/>
-       <arg name="nav_stack"   value="true"/>
+       <arg name="nav_stack"   value="false"/>
     </include>
 
      <!-- Camera detection -->

@@ -31,7 +31,6 @@ bool SmrBci::configure(void) {
 		this->lap_path_ = "/home/whiteam/.whitk/data/lapmask_16ch_eog12_16.dat";
 	}
 
-
 	ros::param::param("~psd_wlength", (int&) this->psd_wlength_, 256);
 	ros::param::param("~psd_novl", (int&) this->psd_novl_, 128);
 	ros::param::param("~psd_dolog", (int&) this->psd_dolog_, 1); 

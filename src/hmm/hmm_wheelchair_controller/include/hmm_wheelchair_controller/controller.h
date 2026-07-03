@@ -47,7 +47,7 @@ struct {
 
 class controller {
     public:
-        enum class command {LEFT, CENTER, RIGHT};
+        enum class command {LEFT, CENTER, RIGHT, NONE};
 
     public:
         controller(void);

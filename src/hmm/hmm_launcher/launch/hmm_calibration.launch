@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
 
-  <arg name="subject" default="s2"/>
-  <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210' />
+  <arg name="subject" default="m4"/>
+  <arg name="devarg" default='eego|EEG_MASK|0x0001B7008031C620|CAP|210|BIP_MASK|0x000001' />
 
   <include file="$(find rosneuro_launchers)/launch/calibration.launch">
     <arg name="subject" value="$(arg subject)" />

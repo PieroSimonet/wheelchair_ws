@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <launch>
 
-  <arg name="subject" default="s1"/>
+  <arg name="subject" default="terst"/>
 
-  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/s2_bhbf_20251211.dat' />
+  <arg name="decoder_path"  default='$(find hmm_launcher)/extra/m4_bhbf_20260217.dat' />
   <arg name="lap_path"      default='$(find hmm_launcher)/extra/lap_eego_hmm16.dat' />
   
-  <arg name="devarg"        default='eego|EEG_MASK|0x0001B7008031C620|CAP|210'/> <!-- put gtec/eegos here -->
+  <arg name="devarg"        default='eego|EEG_MASK|0x0001B7008031C620|CAP|210|BIP_MASK|0x000001'/> <!-- put gtec/eegos here -->
 
   <!-- Threshold -->
-  <arg name="thresholds"  default='0.75 0.55 0.75' />
+  <arg name="thresholds"  default='0.9 0.9 0.9' />
 
   <arg name="modality" value="evaluation" />     <!-- hmm_on hmm_off  -->
   <arg name="task"     value="test" /> <!-- simulation real -->
@@ -18,6 +18,9 @@
   <arg name="csv_filepath"    default='$(env HOME)/Projects/cvs_data/$(arg task)/$(arg modality)/$(arg subject)/' />
   <!-- create the folder if not exists -->
   <param name="dummy" command="mkdir -p $(arg csv_filepath)" />
+
+  <!-- Hmm config 
+  <rosparam command="load" file="$(find rosneuro_hmm)/cfg/HmmCfg.yaml"/> -->
 
   <!--  Integrator info  -->
   <arg name="integratorplugin"   default="rosneuro::integrator::Exponential"/>
@@ -33,6 +36,7 @@
     <arg name="lap_path"     value="$(arg lap_path)" />
     <arg name="devarg"       value="$(arg devarg)" />
     <arg name="gui"          value="true"/>
+    <arg name='thresholds'   value='[0.63, 0.63]' />
   </include>
 
   <!-- Launch the HMM and the HMM control GUI -->
@@ -40,9 +44,11 @@
     <param name="thresholds" value="$(arg thresholds)" />
     <remap from="/hmm/neuroprediction" to="/hmm/neuroprediction/integrated"/> 
   </node>
-  <node name="hmm"            pkg="rosneuro_hmm" type="hmmV2.py"   output="screen" />
+  <node name="hmm"            pkg="rosneuro_hmm" type="hmmV2.py"   output="screen" >
+    <!-- <param name="cfg_name"       value='HmmCfg'/> -->
+  </node>
   <node name="hmm_comp_trav"  pkg="rosneuro_hmm" type="compute_traversability.py" output="screen">
-    <param name="help" value="false" />
+      <param name="help" value="false" />
   </node>
 
   <!-- integrator node -->

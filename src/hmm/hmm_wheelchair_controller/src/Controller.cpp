@@ -37,7 +37,7 @@ controller::controller() {
     ros::param::param<std::string>("~task",     this->task_, "real");
 
     // Check if the command is given
-    this->is_real_ = false; (this->task_.compare("real") == 0);
+    this->is_real_  = false ;//= (this->task_.compare("real") == 0);
 
     /*if (this->is_real_){
       ROS_INFO("Real device");
@@ -53,8 +53,19 @@ controller::controller() {
     this->is_waiting_for_joyevent_ = false;
 
     this->final_odom_ = nav_msgs::Odometry();
-    this->final_odom_.pose.pose.position.x = 15.0;
-    this->final_odom_.pose.pose.position.y = 1.3;
+    this->current_odom_ = nav_msgs::Odometry();
+    this->current_laser_ = sensor_msgs::LaserScan();
+    this->current_laser_.header.frame_id = "void";
+    // this->current_odom_.pose.pose.position.x = 1.2;
+
+
+    if (this->task_.compare("real") == 0){
+        this->final_odom_.pose.pose.position.x = 6.7;
+        this->final_odom_.pose.pose.position.y = 1.7;
+    }else {
+        this->final_odom_.pose.pose.position.x = 15.0;
+        this->final_odom_.pose.pose.position.y = 1.3;
+    }
 
     this->last_event_ = 0;
 
@@ -177,6 +188,8 @@ void controller::send_event(int ev) {
     // Also save this information for the csv file
     this->last_event_ = ev;
 
+    this->update_save_file();
+
     ros::Duration(0.1).sleep();
     send_event_(ev + EVENTS_ID.close_msk);
 
@@ -186,7 +199,13 @@ void controller::check_goal() {
     float dx = this->current_odom_.pose.pose.position.x - this->final_odom_.pose.pose.position.x;
     float dy = this->current_odom_.pose.pose.position.y - this->final_odom_.pose.pose.position.y;
     float dist = sqrt(dx*dx + dy*dy);
-    if (dist < 3.0) { // The goal is reached if I am less than 1 meter away
+
+    float min_dist = 3.0;
+    if (this->task_.compare("real") == 0){
+        min_dist = 0.4; // TODO: I need to check thi
+    }
+
+    if (dist < min_dist) { // The goal is reached if I am less than 1 meter away
         this->goal_reached_ = true;
     }
 }
@@ -216,6 +235,16 @@ void controller::check_probability() {
         ROS_INFO("Right threshold reached");
         this->current_command_ = controller::command::RIGHT;
         this->send_event(EVENTS_ID.bf);
+    }
+
+    if (this->task_.compare("real") == 0) {
+        // check if the threshold is the requested one, otherwise put the pass class
+        if ((this->current_command_ == controller::command::CENTER && this->requested_cue_ != EVENTS_ID.rest) || 
+            (this->current_command_ == controller::command::LEFT   && this->requested_cue_ != EVENTS_ID.bh) || 
+            (this->current_command_ == controller::command::RIGHT  && this->requested_cue_ != EVENTS_ID.bf)) {
+                this->current_command_ = controller::command::NONE;
+            }
+        
     }
 
     if (this->threshold_reached_) {
@@ -387,7 +416,7 @@ geometry_msgs::Twist controller::generate_command() {
     float dy = this->current_odom_.pose.pose.position.y - this->subgoal_.position.y;
     float dist = sqrt(dx*dx + dy*dy);
 
-    ROS_INFO("------------ %f", dist);
+    // ROS_INFO("------------ %f", dist);
 
     geometry_msgs::Twist cmd;
 
@@ -548,8 +577,10 @@ void controller::run() {
 bool controller::is_command_accetable(controller::command cmd) {
 
     // TODO CHECK THE REQUESTED DIRECTION
-    //if (this->is_real_)
-    //    return true;
+    //if (this->task_.compare("real") == 0)
+    //    
+    if  (this->current_laser_.header.frame_id.compare("void") == 0)
+        return true;
 
     if (cmd != controller::command::CENTER) 
         return true; // I only need to check if the wheelchair could go straight 
